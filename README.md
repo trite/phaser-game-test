@@ -86,7 +86,18 @@ When you issue the `npm run build` command, all static assets are automatically 
 
 After you run the `npm run build` command, your code will be built into a single bundle and saved to the `dist` folder, along with any other assets your project imported, or stored in the public assets folder.
 
-In order to deploy your game, you will need to upload *all* of the contents of the `dist` folder to a public facing web server.
+### GitHub Pages Deployment
+
+This repository is configured to automatically deploy to GitHub Pages when you push to the `main` branch. The deployment uses GitHub Actions and the game will be available at `https://trite.github.io/phaser-game-test/`.
+
+The deployment workflow:
+1. Builds the project using `npm run build`
+2. Uploads the `dist` folder contents to GitHub Pages
+3. Makes the game accessible via the GitHub Pages URL
+
+### Manual Deployment
+
+In order to manually deploy your game to other hosting providers, you will need to upload *all* of the contents of the `dist` folder to a public facing web server.
 
 ## Customizing the Template
 
