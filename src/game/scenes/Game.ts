@@ -6,7 +6,7 @@ export class Game extends Scene
     background: Phaser.GameObjects.Image;
     msg_text : Phaser.GameObjects.Text;
     cursors: Phaser.Types.Input.Keyboard.CursorKeys;
-    wasd: any;
+    wasd: Record<string, Phaser.Input.Keyboard.Key>;
 
     constructor ()
     {
@@ -30,7 +30,7 @@ export class Game extends Scene
 
         // Set up keyboard input for arrow keys and WASD
         this.cursors = this.input.keyboard!.createCursorKeys();
-        this.wasd = this.input.keyboard!.addKeys('W,S,A,D');
+        this.wasd = this.input.keyboard!.addKeys('W,S,A,D') as Record<string, Phaser.Input.Keyboard.Key>;
 
         this.input.once('pointerdown', () => {
 
@@ -39,27 +39,27 @@ export class Game extends Scene
         });
     }
 
-    update ()
+    update (_time: number, delta: number)
     {
         const speed = 200;
 
         // Check arrow keys and WASD for movement
         if (this.cursors.left.isDown || this.wasd.A.isDown)
         {
-            this.msg_text.x -= speed * this.game.loop.delta / 1000;
+            this.msg_text.x -= speed * delta / 1000;
         }
         else if (this.cursors.right.isDown || this.wasd.D.isDown)
         {
-            this.msg_text.x += speed * this.game.loop.delta / 1000;
+            this.msg_text.x += speed * delta / 1000;
         }
 
         if (this.cursors.up.isDown || this.wasd.W.isDown)
         {
-            this.msg_text.y -= speed * this.game.loop.delta / 1000;
+            this.msg_text.y -= speed * delta / 1000;
         }
         else if (this.cursors.down.isDown || this.wasd.S.isDown)
         {
-            this.msg_text.y += speed * this.game.loop.delta / 1000;
+            this.msg_text.y += speed * delta / 1000;
         }
     }
 }
