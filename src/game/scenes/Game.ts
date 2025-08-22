@@ -5,8 +5,14 @@ export class Game extends Scene
     camera!: Phaser.Cameras.Scene2D.Camera;
     background!: GameObjects.Image;
     msg_text!: GameObjects.Text;
-    cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-    wasd!: Record<string, Phaser.Input.Keyboard.Key>;
+    
+    // Movement state tracking
+    private movementState = {
+        left: false,
+        right: false,
+        up: false,
+        down: false
+    };
 
     constructor ()
     {
@@ -27,39 +33,58 @@ export class Game extends Scene
             align: 'center'
         }).setOrigin(0.5);
 
-        // Set up keyboard input with proper error handling
-        if (this.input.keyboard) {
-            this.cursors = this.input.keyboard.createCursorKeys();
-            this.wasd = this.input.keyboard.addKeys('W,S,A,D') as Record<string, Phaser.Input.Keyboard.Key>;
-        }
+        // Set up event-driven keyboard input
+        this.setupKeyboardInput();
 
         this.input.once('pointerdown', () => {
             this.scene.start('GameOver');
         });
     }
 
-    update(_time: number, delta: number): void
+    private setupKeyboardInput(): void
     {
-        // Early return if keyboard input is not available
-        if (!this.cursors || !this.wasd) {
+        if (!this.input.keyboard) {
             return;
         }
 
+        // Set up key down event listeners
+        this.input.keyboard.on('keydown-LEFT', () => this.movementState.left = true);
+        this.input.keyboard.on('keydown-RIGHT', () => this.movementState.right = true);
+        this.input.keyboard.on('keydown-UP', () => this.movementState.up = true);
+        this.input.keyboard.on('keydown-DOWN', () => this.movementState.down = true);
+        this.input.keyboard.on('keydown-A', () => this.movementState.left = true);
+        this.input.keyboard.on('keydown-D', () => this.movementState.right = true);
+        this.input.keyboard.on('keydown-W', () => this.movementState.up = true);
+        this.input.keyboard.on('keydown-S', () => this.movementState.down = true);
+
+        // Set up key up event listeners
+        this.input.keyboard.on('keyup-LEFT', () => this.movementState.left = false);
+        this.input.keyboard.on('keyup-RIGHT', () => this.movementState.right = false);
+        this.input.keyboard.on('keyup-UP', () => this.movementState.up = false);
+        this.input.keyboard.on('keyup-DOWN', () => this.movementState.down = false);
+        this.input.keyboard.on('keyup-A', () => this.movementState.left = false);
+        this.input.keyboard.on('keyup-D', () => this.movementState.right = false);
+        this.input.keyboard.on('keyup-W', () => this.movementState.up = false);
+        this.input.keyboard.on('keyup-S', () => this.movementState.down = false);
+    }
+
+    update(_time: number, delta: number): void
+    {
         const speed = 200; // pixels per second
         const deltaSeconds = delta * 0.001; // Convert milliseconds to seconds
         const movement = speed * deltaSeconds;
 
-        // Handle horizontal movement
-        if (this.cursors.left.isDown || this.wasd.A.isDown) {
+        // Apply movement based on current state
+        if (this.movementState.left) {
             this.msg_text.x -= movement;
-        } else if (this.cursors.right.isDown || this.wasd.D.isDown) {
+        }
+        if (this.movementState.right) {
             this.msg_text.x += movement;
         }
-
-        // Handle vertical movement
-        if (this.cursors.up.isDown || this.wasd.W.isDown) {
+        if (this.movementState.up) {
             this.msg_text.y -= movement;
-        } else if (this.cursors.down.isDown || this.wasd.S.isDown) {
+        }
+        if (this.movementState.down) {
             this.msg_text.y += movement;
         }
     }
