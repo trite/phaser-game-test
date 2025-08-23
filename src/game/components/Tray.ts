@@ -49,6 +49,38 @@ export class Tray extends GameObjects.Container {
         return true;
     }
 
+    public addExistingTile(tile: Tile): boolean {
+        if (this.tiles.length >= this.maxTraySize) {
+            return false; // Tray is full
+        }
+
+        const tileIndex = this.tiles.length;
+        const tileX = this.getTileXPosition(tileIndex);
+        
+        // Update tile data to indicate it's no longer placed
+        tile.updateData({ 
+            isPlaced: false, 
+            boardPosition: undefined 
+        });
+        
+        // Remove tile from its current parent if it has one
+        if (tile.parentContainer) {
+            tile.parentContainer.remove(tile);
+        }
+        
+        // Position the tile in the tray using local coordinates
+        tile.setPosition(tileX, 0);
+        tile.setOriginalPosition(this.x + tileX, this.y);
+        
+        // Listen for tile drop events
+        tile.on('tileDropped', this.onTileDropped, this);
+        
+        this.add(tile);
+        this.tiles.push(tile);
+        
+        return true;
+    }
+
     public removeTile(tile: Tile): boolean {
         const index = this.tiles.indexOf(tile);
         if (index === -1) {
@@ -118,6 +150,13 @@ export class Tray extends GameObjects.Container {
         // Find the tile in our array and reset its position
         const index = this.tiles.indexOf(tile);
         if (index !== -1) {
+            // Remove tile from its current parent if it has one
+            if (tile.parentContainer && tile.parentContainer !== this) {
+                tile.parentContainer.remove(tile);
+                // Add it back to the tray container
+                this.add(tile);
+            }
+            
             const tileX = this.getTileXPosition(index);
             tile.setPosition(tileX, 0);
             tile.setOriginalPosition(this.x + tileX, this.y);

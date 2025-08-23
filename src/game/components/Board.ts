@@ -1,5 +1,5 @@
 import { GameObjects, Scene } from 'phaser';
-import { BoardCell, BoardPosition, TileData, CoordinateKey, createCoordinateKey } from '../types/GameState';
+import { BoardCell, BoardPosition, TileData, CoordinateKey, createCoordinateKey, HighlightType, PlacementValidationResult } from '../types/GameState';
 import { Tile } from './Tile';
 
 export class Board extends GameObjects.Container {
@@ -90,9 +90,12 @@ export class Board extends GameObjects.Container {
             boardPosition: { row, col } 
         });
 
-        // Position the tile visually
-        const worldPos = this.getCellWorldPosition(row, col);
-        tile.setPosition(worldPos.x, worldPos.y);
+        // Position the tile visually using local coordinates
+        const localPos = this.getCellLocalPosition(row, col);
+        tile.setPosition(localPos.x, localPos.y);
+        
+        // Add tile to board container so it moves with the board
+        this.add(tile);
         
         // Store reference to tile
         const coordKey = createCoordinateKey(row, col);
@@ -122,6 +125,10 @@ export class Board extends GameObjects.Container {
                 isPlaced: false, 
                 boardPosition: undefined 
             });
+            
+            // Remove tile from board container
+            this.remove(tile);
+            
             this.placedTiles.delete(coordKey);
             return tile;
         }
@@ -160,6 +167,17 @@ export class Board extends GameObjects.Container {
         };
     }
 
+    public getCellLocalPosition(row: number, col: number): { x: number; y: number } {
+        const actualGridSize = this.CELL_SIZE * this.GRID_SIZE;
+        const startX = -(actualGridSize / 2) + (this.CELL_SIZE / 2);
+        const startY = -(actualGridSize / 2) + (this.CELL_SIZE / 2);
+        
+        return {
+            x: startX + (col * this.CELL_SIZE),
+            y: startY + (row * this.CELL_SIZE)
+        };
+    }
+
     public getTileAt(row: number, col: number): TileData | null {
         if (row < 0 || row >= this.GRID_SIZE || col < 0 || col >= this.GRID_SIZE) {
             return null;
@@ -177,5 +195,128 @@ export class Board extends GameObjects.Container {
 
     public getCellSize(): number {
         return this.CELL_SIZE;
+    }
+
+    // Placement validation methods
+    public validatePlacement(targetRow: number, targetCol: number): PlacementValidationResult {
+        // First check if the position is valid on the board itself
+        if (!this.canPlaceTileAt(targetRow, targetCol)) {
+            return {
+                isValidPlacement: false,
+                validPositions: [],
+                highlightType: HighlightType.NONE
+            } as PlacementValidationResult;
+        }
+
+        const result = this.calculateValidPlacement();
+        
+        // Check if the target position is in the valid positions
+        const isValidPlacement = result.validPositions.some(
+            pos => pos.row === targetRow && pos.col === targetCol
+        );
+
+        return {
+            ...result,
+            isValidPlacement
+        };
+    }
+
+    public calculateValidPlacement(): PlacementValidationResult {
+        const placedPositions = this.getAllPlacedPositions();
+        
+        if (placedPositions.length === 0) {
+            // No tiles placed, anywhere is valid
+            const validPositions: BoardPosition[] = [];
+            for (let row = 0; row < this.GRID_SIZE; row++) {
+                for (let col = 0; col < this.GRID_SIZE; col++) {
+                    if (this.canPlaceTileAt(row, col)) {
+                        validPositions.push({ row, col });
+                    }
+                }
+            }
+            return {
+                isValidPlacement: true,
+                validPositions,
+                highlightType: HighlightType.NONE
+            } as PlacementValidationResult;
+        }
+
+        if (placedPositions.length === 1) {
+            // One tile placed, next tile can be in same row or column
+            const firstPos = placedPositions[0];
+            const validPositions: BoardPosition[] = [];
+            
+            // Add all valid positions in the same row
+            for (let col = 0; col < this.GRID_SIZE; col++) {
+                if (this.canPlaceTileAt(firstPos.row, col)) {
+                    validPositions.push({ row: firstPos.row, col });
+                }
+            }
+            
+            // Add all valid positions in the same column (avoid duplicates)
+            for (let row = 0; row < this.GRID_SIZE; row++) {
+                if (row !== firstPos.row && this.canPlaceTileAt(row, firstPos.col)) {
+                    validPositions.push({ row, col: firstPos.col });
+                }
+            }
+            
+            return {
+                isValidPlacement: true,
+                validPositions,
+                highlightType: HighlightType.ROWS_AND_COLUMNS,
+                highlightRow: firstPos.row,
+                highlightCol: firstPos.col
+            } as PlacementValidationResult;
+        }
+
+        // Two or more tiles placed - must be in same line
+        const firstPos = placedPositions[0];
+        const secondPos = placedPositions[1];
+        const validPositions: BoardPosition[] = [];
+
+        if (firstPos.row === secondPos.row) {
+            // Same row - restrict to this row
+            for (let col = 0; col < this.GRID_SIZE; col++) {
+                if (this.canPlaceTileAt(firstPos.row, col)) {
+                    validPositions.push({ row: firstPos.row, col });
+                }
+            }
+            return {
+                isValidPlacement: true,
+                validPositions,
+                highlightType: HighlightType.ROWS,
+                highlightRow: firstPos.row
+            } as PlacementValidationResult;
+        } else if (firstPos.col === secondPos.col) {
+            // Same column - restrict to this column
+            for (let row = 0; row < this.GRID_SIZE; row++) {
+                if (this.canPlaceTileAt(row, firstPos.col)) {
+                    validPositions.push({ row, col: firstPos.col });
+                }
+            }
+            return {
+                isValidPlacement: true,
+                validPositions,
+                highlightType: HighlightType.COLUMNS,
+                highlightCol: firstPos.col
+            } as PlacementValidationResult;
+        }
+
+        // Tiles are not in a line - no valid placements
+        return {
+            isValidPlacement: false,
+            validPositions: [],
+            highlightType: HighlightType.NONE
+        } as PlacementValidationResult;
+    }
+
+    private getAllPlacedPositions(): BoardPosition[] {
+        const positions: BoardPosition[] = [];
+        this.placedTiles.forEach(tile => {
+            if (tile.tileData.boardPosition) {
+                positions.push(tile.tileData.boardPosition);
+            }
+        });
+        return positions;
     }
 }

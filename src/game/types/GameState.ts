@@ -46,3 +46,24 @@ export function parseCoordinateKey(key: CoordinateKey): BoardPosition {
     const [row, col] = key.split(',').map(Number);
     return { row, col };
 }
+
+// Placement validation types
+export enum HighlightType {
+    NONE = 'none',
+    ROWS = 'rows', 
+    COLUMNS = 'columns',
+    ROWS_AND_COLUMNS = 'rowsAndColumns'
+}
+
+export type PlacementValidationResult = {
+   isValidPlacement: boolean;
+   validPositions: BoardPosition[];
+   highlightType: HighlightType;
+   highlightRow?: number;
+   highlightCol?: number;
+} & (
+   | { highlightType: HighlightType.NONE }
+   | { highlightType: HighlightType.ROWS; highlightRow: number }
+   | { highlightType: HighlightType.COLUMNS; highlightCol: number }
+   | { highlightType: HighlightType.ROWS_AND_COLUMNS; highlightRow: number; highlightCol: number }
+);
