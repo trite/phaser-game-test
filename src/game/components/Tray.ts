@@ -63,7 +63,12 @@ export class Tray extends GameObjects.Container {
             boardPosition: undefined 
         });
         
-        // Position the tile in the tray
+        // Remove tile from its current parent if it has one
+        if (tile.parentContainer) {
+            tile.parentContainer.remove(tile);
+        }
+        
+        // Position the tile in the tray using local coordinates
         tile.setPosition(tileX, 0);
         tile.setOriginalPosition(this.x + tileX, this.y);
         
@@ -145,6 +150,13 @@ export class Tray extends GameObjects.Container {
         // Find the tile in our array and reset its position
         const index = this.tiles.indexOf(tile);
         if (index !== -1) {
+            // Remove tile from its current parent if it has one
+            if (tile.parentContainer && tile.parentContainer !== this) {
+                tile.parentContainer.remove(tile);
+                // Add it back to the tray container
+                this.add(tile);
+            }
+            
             const tileX = this.getTileXPosition(index);
             tile.setPosition(tileX, 0);
             tile.setOriginalPosition(this.x + tileX, this.y);

@@ -4,6 +4,7 @@ import { Board } from '../components/Board';
 import { Tray } from '../components/Tray';
 import { Tile } from '../components/Tile';
 import { TileFactory } from '../utils/TileFactory';
+import { PlacementValidationSystem, HighlightType } from '../systems/PlacementValidationSystem';
 
 export class Game extends Scene
 {
@@ -19,16 +20,8 @@ export class Game extends Scene
     // UI elements
     private titleText!: GameObjects.Text;
     
-    // Placement restriction system
-    private placementRestrictions: {
-        isActive: boolean;
-        allowedRow?: number;
-        allowedCol?: number;
-        placedTilePositions: { row: number; col: number }[];
-    } = {
-        isActive: false,
-        placedTilePositions: []
-    };
+    // Placement validation system
+    private placementValidationSystem!: PlacementValidationSystem;
     
     // Visual indicators for valid placement areas
     private restrictionHighlights: GameObjects.Graphics[] = [];
@@ -105,6 +98,9 @@ export class Game extends Scene
         const boardY = this.SCREEN_HEIGHT / 2; // Center vertically on screen
         
         this.board = new Board(this, boardX, boardY, boardSize);
+        
+        // Initialize placement validation system
+        this.placementValidationSystem = new PlacementValidationSystem(this.board);
         
         // Listen for tile drops from placed tiles on the board
         this.board.on('tileDraggedFromBoard', this.onTileDropped, this);
@@ -220,7 +216,7 @@ export class Game extends Scene
                 this.gameState.playerTray.push(tile.tileData);
             }
             
-            // Add existing tile instance to tray
+            // Add existing tile instance to tray using world coordinates
             if (this.playerTray.getAllTiles().indexOf(tile) === -1) {
                 this.playerTray.addExistingTile(tile);
             } else {
@@ -267,7 +263,7 @@ export class Game extends Scene
                 tile.setPosition(localPos.x, localPos.y);
             }
         } else {
-            // Tile was in tray, return it to tray
+            // Tile was in tray, return it to tray using world coordinates
             this.playerTray.returnTileToTray(tile);
         }
     }
@@ -281,85 +277,44 @@ export class Game extends Scene
     }
 
     private canPlaceTileAt(row: number, col: number): boolean {
-        // First check if the position is valid on the board
-        if (!this.board.canPlaceTileAt(row, col)) {
-            return false;
-        }
-        
-        // If no restrictions are active, allow placement anywhere
-        if (!this.placementRestrictions.isActive) {
-            return true;
-        }
-        
-        // Check placement restrictions
-        const { allowedRow, allowedCol } = this.placementRestrictions;
-        
-        if (allowedRow !== undefined && row !== allowedRow) {
-            return false;
-        }
-        
-        if (allowedCol !== undefined && col !== allowedCol) {
-            return false;
-        }
-        
-        return true;
+        const result = this.placementValidationSystem.validatePlacement(row, col);
+        return result.isValidPlacement;
     }
 
     private updatePlacementRestrictions(): void {
         const placedTiles = this.board.getAllPlacedTiles();
         
+        // Update the validation system with current placed tile positions
+        const placedPositions = placedTiles.map(tile => tile.tileData.boardPosition!).filter(pos => pos);
+        this.placementValidationSystem.updatePlacedTiles(placedPositions);
+        
         // Clear existing highlights
         this.clearRestrictionHighlights();
         
-        if (placedTiles.length === 0) {
-            // No tiles placed, no restrictions
-            this.placementRestrictions = {
-                isActive: false,
-                placedTilePositions: []
-            };
-            return;
-        }
+        // Get the validation result to determine highlighting
+        const validationResult = this.placementValidationSystem.calculateValidPlacement();
         
-        if (placedTiles.length === 1) {
-            // One tile placed, second tile can be in same row or column
-            const firstTile = placedTiles[0];
-            const pos = firstTile.tileData.boardPosition;
-            if (pos) {
-                this.placementRestrictions = {
-                    isActive: true,
-                    placedTilePositions: [pos]
-                };
-                
-                // Highlight the entire row and column for the first tile
-                this.highlightRowAndColumn(pos.row, pos.col);
-            }
-            return;
-        }
-        
-        // Two or more tiles placed
-        const firstPos = placedTiles[0].tileData.boardPosition;
-        const secondPos = placedTiles[1].tileData.boardPosition;
-        
-        if (firstPos && secondPos) {
-            this.placementRestrictions.placedTilePositions = [firstPos, secondPos];
-            
-            if (firstPos.row === secondPos.row) {
-                // Same row - restrict to this row
-                this.placementRestrictions = {
-                    isActive: true,
-                    allowedRow: firstPos.row,
-                    placedTilePositions: [firstPos, secondPos]
-                };
-                this.highlightRow(firstPos.row);
-            } else if (firstPos.col === secondPos.col) {
-                // Same column - restrict to this column
-                this.placementRestrictions = {
-                    isActive: true,
-                    allowedCol: firstPos.col,
-                    placedTilePositions: [firstPos, secondPos]
-                };
-                this.highlightColumn(firstPos.col);
-            }
+        // Apply highlights based on the validation result
+        switch (validationResult.highlightType) {
+            case HighlightType.ROWS_AND_COLUMNS:
+                if (validationResult.highlightRow !== undefined && validationResult.highlightCol !== undefined) {
+                    this.highlightRowAndColumn(validationResult.highlightRow, validationResult.highlightCol);
+                }
+                break;
+            case HighlightType.ROWS:
+                if (validationResult.highlightRow !== undefined) {
+                    this.highlightRow(validationResult.highlightRow);
+                }
+                break;
+            case HighlightType.COLUMNS:
+                if (validationResult.highlightCol !== undefined) {
+                    this.highlightColumn(validationResult.highlightCol);
+                }
+                break;
+            case HighlightType.NONE:
+            default:
+                // No highlighting needed
+                break;
         }
     }
 
