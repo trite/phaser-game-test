@@ -1,15 +1,23 @@
 import { Scene, GameObjects } from 'phaser';
+import { GameState } from '../types/GameState';
+import { Board } from '../components/Board';
+import { Tray } from '../components/Tray';
+import { Tile } from '../components/Tile';
+import { TileFactory } from '../utils/TileFactory';
 
 export class Game extends Scene
 {
     camera!: Phaser.Cameras.Scene2D.Camera;
     background!: GameObjects.Image;
     
+    // Game components
+    private board!: Board;
+    private playerTray!: Tray;
+    private endTurnButton!: GameObjects.Text;
+    private gameState!: GameState;
+    
     // UI elements
     private titleText!: GameObjects.Text;
-    private testBoard!: GameObjects.Rectangle;
-    private testTray!: GameObjects.Rectangle;
-    private endTurnButton!: GameObjects.Text;
     
     // Constants
     private readonly SCREEN_WIDTH = 1024;
@@ -27,14 +35,49 @@ export class Game extends Scene
         this.camera = this.cameras.main;
         this.camera.setBackgroundColor(0x404040);
 
-        console.log('Game scene created!');
+        console.log('Game scene created successfully!');
 
-        // Create basic UI elements first
+        // Initialize game state
+        this.initializeGameState();
+
+        // Create UI elements
         this.createBackground();
-        this.createTitle();
-        this.createTestBoard();
-        this.createTestTray();
+        this.createBoard();
+        this.createTray();
         this.createEndTurnButton();
+        this.createTitle();
+        
+        // Setup interaction handlers
+        this.setupDragAndDrop();
+        
+        // Fill initial tray with tiles
+        this.fillTrayWithRandomTiles();
+    }
+
+    private initializeGameState(): void {
+        const allTiles = TileFactory.createAllTileTypes();
+        
+        this.gameState = {
+            board: this.createEmptyBoard(),
+            playerTray: [],
+            tilePool: allTiles,
+            maxTraySize: 6
+        };
+    }
+
+    private createEmptyBoard(): any {
+        const board: any = [];
+        for (let row = 0; row < 11; row++) {
+            board[row] = [];
+            for (let col = 0; col < 11; col++) {
+                board[row][col] = {
+                    row,
+                    col,
+                    tile: null
+                };
+            }
+        }
+        return board;
     }
 
     private createBackground(): void {
@@ -42,72 +85,24 @@ export class Game extends Scene
         this.background.setAlpha(0.3);
     }
 
-    private createTitle(): void {
-        this.titleText = this.add.text(this.SCREEN_WIDTH / 2, 30, 'Word Game - Board & Tray Test', {
-            fontSize: '24px',
-            color: '#ffffff',
-            fontFamily: 'Arial Black'
-        });
-        this.titleText.setOrigin(0.5);
-    }
-
-    private createTestBoard(): void {
+    private createBoard(): void {
         const boardSize = Math.floor(this.SCREEN_HEIGHT * this.BOARD_HEIGHT_PERCENT);
         const boardX = this.SCREEN_WIDTH / 2;
         const boardY = (this.SCREEN_HEIGHT * this.BOARD_HEIGHT_PERCENT) / 2;
         
-        this.testBoard = this.add.rectangle(boardX, boardY, boardSize, boardSize, 0xffffff, 0.8);
-        this.testBoard.setStrokeStyle(2, 0x000000);
-        
-        // Add grid lines
-        const cellSize = boardSize / 11;
-        for (let i = 1; i < 11; i++) {
-            // Vertical lines
-            const vLineX = boardX - boardSize/2 + (i * cellSize);
-            this.add.line(0, 0, vLineX, boardY - boardSize/2, vLineX, boardY + boardSize/2, 0x999999);
-            
-            // Horizontal lines
-            const hLineY = boardY - boardSize/2 + (i * cellSize);
-            this.add.line(0, 0, boardX - boardSize/2, hLineY, boardX + boardSize/2, hLineY, 0x999999);
-        }
-        
-        // Add label
-        this.add.text(boardX, boardY + boardSize/2 + 20, '11x11 Game Board', {
-            fontSize: '16px',
-            color: '#ffffff'
-        }).setOrigin(0.5);
+        this.board = new Board(this, boardX, boardY, boardSize);
     }
 
-    private createTestTray(): void {
+    private createTray(): void {
         const trayY = this.SCREEN_HEIGHT - (this.SCREEN_HEIGHT * this.TRAY_HEIGHT_PERCENT) / 2;
-        const trayX = this.SCREEN_WIDTH / 2 - 100;
+        const trayX = this.SCREEN_WIDTH / 2 - 100; // Offset left to make room for button
         
-        this.testTray = this.add.rectangle(trayX, trayY, 300, 60, 0x8b4513, 0.8);
-        this.testTray.setStrokeStyle(2, 0x654321);
-        
-        // Add sample tiles
-        for (let i = 0; i < 6; i++) {
-            const tileX = trayX - 125 + (i * 45);
-            const tile = this.add.rectangle(tileX, trayY, 40, 40, 0xf0f0f0, 1);
-            tile.setStrokeStyle(2, 0x333333);
-            
-            // Add letter
-            const letters = ['A', 'B', 'C', '1', '@', 'Z'];
-            this.add.text(tileX, trayY, letters[i], {
-                fontSize: '16px',
-                color: '#000000'
-            }).setOrigin(0.5);
-        }
-        
-        // Add label
-        this.add.text(trayX, trayY + 50, 'Player Tray (6 tiles)', {
-            fontSize: '14px',
-            color: '#ffffff'
-        }).setOrigin(0.5);
+        this.playerTray = new Tray(this, trayX, trayY, this.gameState.maxTraySize);
+        this.playerTray.on('tileDroppedFromTray', this.onTileDroppedFromTray, this);
     }
 
     private createEndTurnButton(): void {
-        const buttonX = this.SCREEN_WIDTH / 2 + 200;
+        const buttonX = this.SCREEN_WIDTH / 2 + 200; // To the right of tray
         const buttonY = this.SCREEN_HEIGHT - (this.SCREEN_HEIGHT * this.TRAY_HEIGHT_PERCENT) / 2;
         
         this.endTurnButton = this.add.text(buttonX, buttonY, 'End Turn', {
@@ -127,13 +122,66 @@ export class Game extends Scene
             this.endTurnButton.setStyle({ backgroundColor: '#4a4a4a' });
         });
         
-        this.endTurnButton.on('pointerdown', () => {
-            console.log('End Turn clicked!');
-            this.endTurnButton.setStyle({ backgroundColor: '#8a8a8a' });
+        this.endTurnButton.on('pointerdown', this.onEndTurnClicked, this);
+    }
+
+    private createTitle(): void {
+        this.titleText = this.add.text(this.SCREEN_WIDTH / 2, 30, 'Word Game', {
+            fontSize: '24px',
+            color: '#ffffff',
+            fontFamily: 'Arial Black'
         });
+        this.titleText.setOrigin(0.5);
+    }
+
+    private fillTrayWithRandomTiles(): void {
+        const tilesToDraw = Math.min(this.gameState.maxTraySize, this.gameState.tilePool.length);
+        const drawnTiles = TileFactory.drawRandomTiles(this.gameState.tilePool, tilesToDraw);
         
-        this.endTurnButton.on('pointerup', () => {
-            this.endTurnButton.setStyle({ backgroundColor: '#6a6a6a' });
+        drawnTiles.forEach(tileData => {
+            // Remove from pool
+            const poolIndex = this.gameState.tilePool.findIndex(t => t.id === tileData.id);
+            if (poolIndex !== -1) {
+                this.gameState.tilePool.splice(poolIndex, 1);
+            }
+            
+            // Add to tray
+            this.gameState.playerTray.push(tileData);
+            this.playerTray.addTile(tileData);
         });
+    }
+
+    private setupDragAndDrop(): void {
+        // Drag and drop is handled by individual tile components
+        // This method is here for future drag/drop setup if needed
+    }
+
+    private onTileDroppedFromTray(tile: Tile): void {
+        const pointer = this.input.activePointer;
+        const boardPos = this.board.getBoardPositionFromWorldPos(pointer.worldX, pointer.worldY);
+        
+        if (boardPos && this.board.canPlaceTileAt(boardPos.row, boardPos.col)) {
+            // Place tile on board
+            if (this.board.placeTile(tile, boardPos.row, boardPos.col)) {
+                // Remove from tray
+                this.playerTray.removeTile(tile);
+                
+                // Update game state
+                const trayIndex = this.gameState.playerTray.findIndex(t => t.id === tile.tileData.id);
+                if (trayIndex !== -1) {
+                    this.gameState.playerTray.splice(trayIndex, 1);
+                }
+                
+                console.log(`Placed tile ${tile.tileData.value} at ${boardPos.row},${boardPos.col}`);
+            }
+        } else {
+            // Return tile to tray
+            this.playerTray.returnTileToTray(tile);
+        }
+    }
+
+    private onEndTurnClicked(): void {
+        console.log('End Turn clicked!');
+        // For now, just log. Next story will handle turn logic.
     }
 }
