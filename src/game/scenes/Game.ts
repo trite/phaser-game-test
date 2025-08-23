@@ -1,10 +1,9 @@
 import { Scene, GameObjects } from 'phaser';
-import { GameState } from '../types/GameState';
+import { GameState, HighlightType } from '../types/GameState';
 import { Board } from '../components/Board';
 import { Tray } from '../components/Tray';
 import { Tile } from '../components/Tile';
 import { TileFactory } from '../utils/TileFactory';
-import { PlacementValidationSystem, HighlightType } from '../systems/PlacementValidationSystem';
 
 export class Game extends Scene
 {
@@ -19,9 +18,6 @@ export class Game extends Scene
     
     // UI elements
     private titleText!: GameObjects.Text;
-    
-    // Placement validation system
-    private placementValidationSystem!: PlacementValidationSystem;
     
     // Visual indicators for valid placement areas
     private restrictionHighlights: GameObjects.Graphics[] = [];
@@ -98,9 +94,6 @@ export class Game extends Scene
         const boardY = this.SCREEN_HEIGHT / 2; // Center vertically on screen
         
         this.board = new Board(this, boardX, boardY, boardSize);
-        
-        // Initialize placement validation system
-        this.placementValidationSystem = new PlacementValidationSystem(this.board);
         
         // Listen for tile drops from placed tiles on the board
         this.board.on('tileDraggedFromBoard', this.onTileDropped, this);
@@ -277,22 +270,16 @@ export class Game extends Scene
     }
 
     private canPlaceTileAt(row: number, col: number): boolean {
-        const result = this.placementValidationSystem.validatePlacement(row, col);
+        const result = this.board.validatePlacement(row, col);
         return result.isValidPlacement;
     }
 
     private updatePlacementRestrictions(): void {
-        const placedTiles = this.board.getAllPlacedTiles();
-        
-        // Update the validation system with current placed tile positions
-        const placedPositions = placedTiles.map(tile => tile.tileData.boardPosition!).filter(pos => pos);
-        this.placementValidationSystem.updatePlacedTiles(placedPositions);
-        
         // Clear existing highlights
         this.clearRestrictionHighlights();
         
         // Get the validation result to determine highlighting
-        const validationResult = this.placementValidationSystem.calculateValidPlacement();
+        const validationResult = this.board.calculateValidPlacement();
         
         // Apply highlights based on the validation result
         switch (validationResult.highlightType) {
