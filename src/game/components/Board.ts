@@ -1,5 +1,5 @@
 import { GameObjects, Scene } from 'phaser';
-import { BoardCell, BoardPosition, TileData } from '../types/GameState';
+import { BoardCell, BoardPosition, TileData, CoordinateKey, createCoordinateKey } from '../types/GameState';
 import { Tile } from './Tile';
 
 export class Board extends GameObjects.Container {
@@ -8,8 +8,8 @@ export class Board extends GameObjects.Container {
     private readonly BOARD_SIZE: number;
     
     private cells: BoardCell[][] = [];
-    private cellVisuals: GameObjects.Rectangle[][] = [];
-    private placedTiles: Map<string, Tile> = new Map(); // position key -> tile
+    private gridLines: GameObjects.Graphics;
+    private placedTiles: Map<CoordinateKey, Tile> = new Map(); // coordinate key -> tile
 
     constructor(scene: Scene, x: number, y: number, boardSize: number) {
         super(scene, x, y);
@@ -18,7 +18,9 @@ export class Board extends GameObjects.Container {
         this.CELL_SIZE = Math.floor(boardSize / this.GRID_SIZE);
         
         this.initializeBoard();
-        this.createVisuals();
+        this.gridLines = this.scene.add.graphics();
+        this.add(this.gridLines);
+        this.createGridLines();
         
         scene.add.existing(this);
     }
@@ -37,31 +39,29 @@ export class Board extends GameObjects.Container {
         }
     }
 
-    private createVisuals(): void {
-        this.cellVisuals = [];
-        const startX = -(this.BOARD_SIZE / 2) + (this.CELL_SIZE / 2);
-        const startY = -(this.BOARD_SIZE / 2) + (this.CELL_SIZE / 2);
+    private createGridLines(): void {
+        const startX = -(this.BOARD_SIZE / 2);
+        const startY = -(this.BOARD_SIZE / 2);
+        const endX = this.BOARD_SIZE / 2;
+        const endY = this.BOARD_SIZE / 2;
 
-        for (let row = 0; row < this.GRID_SIZE; row++) {
-            this.cellVisuals[row] = [];
-            for (let col = 0; col < this.GRID_SIZE; col++) {
-                const cellX = startX + (col * this.CELL_SIZE);
-                const cellY = startY + (row * this.CELL_SIZE);
-                
-                const cellRect = this.scene.add.rectangle(
-                    cellX, 
-                    cellY, 
-                    this.CELL_SIZE - 2, 
-                    this.CELL_SIZE - 2, 
-                    0xffffff, 
-                    0.8
-                );
-                cellRect.setStrokeStyle(1, 0x999999);
-                
-                this.add(cellRect);
-                this.cellVisuals[row][col] = cellRect;
-            }
+        this.gridLines.lineStyle(1, 0x999999, 0.8);
+
+        // Draw vertical lines
+        for (let i = 0; i <= this.GRID_SIZE; i++) {
+            const x = startX + (i * this.CELL_SIZE);
+            this.gridLines.moveTo(x, startY);
+            this.gridLines.lineTo(x, endY);
         }
+
+        // Draw horizontal lines
+        for (let i = 0; i <= this.GRID_SIZE; i++) {
+            const y = startY + (i * this.CELL_SIZE);
+            this.gridLines.moveTo(startX, y);
+            this.gridLines.lineTo(endX, y);
+        }
+
+        this.gridLines.strokePath();
     }
 
     public canPlaceTileAt(row: number, col: number): boolean {
@@ -93,8 +93,8 @@ export class Board extends GameObjects.Container {
         tile.setPosition(worldPos.x, worldPos.y);
         
         // Store reference to tile
-        const posKey = `${row},${col}`;
-        this.placedTiles.set(posKey, tile);
+        const coordKey = createCoordinateKey(row, col);
+        this.placedTiles.set(coordKey, tile);
 
         return true;
     }
@@ -113,14 +113,14 @@ export class Board extends GameObjects.Container {
         cell.tile = null;
         
         // Get and remove the tile reference
-        const posKey = `${row},${col}`;
-        const tile = this.placedTiles.get(posKey);
+        const coordKey = createCoordinateKey(row, col);
+        const tile = this.placedTiles.get(coordKey);
         if (tile) {
             tile.updateData({ 
                 isPlaced: false, 
                 boardPosition: undefined 
             });
-            this.placedTiles.delete(posKey);
+            this.placedTiles.delete(coordKey);
             return tile;
         }
 

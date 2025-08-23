@@ -88,7 +88,7 @@ export class Game extends Scene
     private createBoard(): void {
         const boardSize = Math.floor(this.SCREEN_HEIGHT * this.BOARD_HEIGHT_PERCENT);
         const boardX = this.SCREEN_WIDTH / 2;
-        const boardY = (this.SCREEN_HEIGHT * this.BOARD_HEIGHT_PERCENT) / 2;
+        const boardY = this.SCREEN_HEIGHT / 2; // Center vertically on screen
         
         this.board = new Board(this, boardX, boardY, boardSize);
     }

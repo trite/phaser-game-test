@@ -32,3 +32,17 @@ export interface BoardPosition {
     row: number;
     col: number;
 }
+
+// Coordinate key type for better type safety in Maps
+export type CoordinateKey = `${number},${number}`;
+
+// Helper function to create coordinate keys
+export function createCoordinateKey(row: number, col: number): CoordinateKey {
+    return `${row},${col}`;
+}
+
+// Helper function to parse coordinate keys back to position
+export function parseCoordinateKey(key: CoordinateKey): BoardPosition {
+    const [row, col] = key.split(',').map(Number);
+    return { row, col };
+}
