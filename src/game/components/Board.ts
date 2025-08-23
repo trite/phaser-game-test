@@ -5,7 +5,6 @@ import { Tile } from './Tile';
 export class Board extends GameObjects.Container {
     private readonly GRID_SIZE = 11;
     private readonly CELL_SIZE: number;
-    private readonly BOARD_SIZE: number;
     
     private cells: BoardCell[][] = [];
     private gridLines: GameObjects.Graphics;
@@ -14,7 +13,6 @@ export class Board extends GameObjects.Container {
     constructor(scene: Scene, x: number, y: number, boardSize: number) {
         super(scene, x, y);
         
-        this.BOARD_SIZE = boardSize;
         this.CELL_SIZE = Math.floor(boardSize / this.GRID_SIZE);
         
         this.initializeBoard();
@@ -40,10 +38,14 @@ export class Board extends GameObjects.Container {
     }
 
     private createGridLines(): void {
-        const startX = -(this.BOARD_SIZE / 2);
-        const startY = -(this.BOARD_SIZE / 2);
-        const endX = this.BOARD_SIZE / 2;
-        const endY = this.BOARD_SIZE / 2;
+        // Calculate the actual grid size based on cell size
+        const actualGridSize = this.CELL_SIZE * this.GRID_SIZE;
+        
+        // Center the grid within the board container
+        const startX = -(actualGridSize / 2);
+        const startY = -(actualGridSize / 2);
+        const endX = actualGridSize / 2;
+        const endY = actualGridSize / 2;
 
         this.gridLines.lineStyle(1, 0x999999, 0.8);
 
@@ -132,9 +134,10 @@ export class Board extends GameObjects.Container {
         const localX = worldX - this.x;
         const localY = worldY - this.y;
         
-        // Calculate which cell this corresponds to
-        const startX = -(this.BOARD_SIZE / 2);
-        const startY = -(this.BOARD_SIZE / 2);
+        // Calculate which cell this corresponds to using actual grid size
+        const actualGridSize = this.CELL_SIZE * this.GRID_SIZE;
+        const startX = -(actualGridSize / 2);
+        const startY = -(actualGridSize / 2);
         
         const col = Math.floor((localX - startX) / this.CELL_SIZE);
         const row = Math.floor((localY - startY) / this.CELL_SIZE);
@@ -147,8 +150,9 @@ export class Board extends GameObjects.Container {
     }
 
     public getCellWorldPosition(row: number, col: number): { x: number; y: number } {
-        const startX = -(this.BOARD_SIZE / 2) + (this.CELL_SIZE / 2);
-        const startY = -(this.BOARD_SIZE / 2) + (this.CELL_SIZE / 2);
+        const actualGridSize = this.CELL_SIZE * this.GRID_SIZE;
+        const startX = -(actualGridSize / 2) + (this.CELL_SIZE / 2);
+        const startY = -(actualGridSize / 2) + (this.CELL_SIZE / 2);
         
         return {
             x: this.x + startX + (col * this.CELL_SIZE),
