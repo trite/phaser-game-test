@@ -8,13 +8,18 @@ export enum HighlightType {
     ROWS_AND_COLUMNS = 'rowsAndColumns'
 }
 
-export interface PlacementValidationResult {
-    isValidPlacement: boolean;
-    validPositions: BoardPosition[];
-    highlightType: HighlightType;
-    highlightRow?: number;
-    highlightCol?: number;
-}
+export type PlacementValidationResult = {
+   isValidPlacement: boolean;
+   validPositions: BoardPosition[];
+   highlightType: HighlightType;
+   highlightRow?: number;
+   highlightCol?: number;
+} & (
+   | { highlightType: HighlightType.NONE }
+   | { highlightType: HighlightType.ROWS; highlightRow: number }
+   | { highlightType: HighlightType.COLUMNS; highlightCol: number }
+   | { highlightType: HighlightType.ROWS_AND_COLUMNS; highlightRow: number; highlightCol: number }
+);
 
 export class PlacementValidationSystem {
     private board: Board;
@@ -35,7 +40,7 @@ export class PlacementValidationSystem {
                 isValidPlacement: false,
                 validPositions: [],
                 highlightType: HighlightType.NONE
-            };
+            } as PlacementValidationResult;
         }
 
         const result = this.calculateValidPlacement();
@@ -68,7 +73,7 @@ export class PlacementValidationSystem {
                 isValidPlacement: true,
                 validPositions,
                 highlightType: HighlightType.NONE
-            };
+            } as PlacementValidationResult;
         }
 
         if (this.placedTilePositions.length === 1) {
@@ -96,7 +101,7 @@ export class PlacementValidationSystem {
                 highlightType: HighlightType.ROWS_AND_COLUMNS,
                 highlightRow: firstPos.row,
                 highlightCol: firstPos.col
-            };
+            } as PlacementValidationResult;
         }
 
         // Two or more tiles placed - must be in same line
@@ -116,7 +121,7 @@ export class PlacementValidationSystem {
                 validPositions,
                 highlightType: HighlightType.ROWS,
                 highlightRow: firstPos.row
-            };
+            } as PlacementValidationResult;
         } else if (firstPos.col === secondPos.col) {
             // Same column - restrict to this column
             for (let row = 0; row < gridSize; row++) {
@@ -129,7 +134,7 @@ export class PlacementValidationSystem {
                 validPositions,
                 highlightType: HighlightType.COLUMNS,
                 highlightCol: firstPos.col
-            };
+            } as PlacementValidationResult;
         }
 
         // Tiles are not in a line - no valid placements
@@ -137,6 +142,6 @@ export class PlacementValidationSystem {
             isValidPlacement: false,
             validPositions: [],
             highlightType: HighlightType.NONE
-        };
+        } as PlacementValidationResult;
     }
 }

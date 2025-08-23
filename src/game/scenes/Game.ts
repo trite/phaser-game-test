@@ -297,19 +297,13 @@ export class Game extends Scene
         // Apply highlights based on the validation result
         switch (validationResult.highlightType) {
             case HighlightType.ROWS_AND_COLUMNS:
-                if (validationResult.highlightRow !== undefined && validationResult.highlightCol !== undefined) {
-                    this.highlightRowAndColumn(validationResult.highlightRow, validationResult.highlightCol);
-                }
+                this.highlightRowAndColumn(validationResult.highlightRow, validationResult.highlightCol);
                 break;
             case HighlightType.ROWS:
-                if (validationResult.highlightRow !== undefined) {
-                    this.highlightRow(validationResult.highlightRow);
-                }
+                this.highlightRow(validationResult.highlightRow);
                 break;
             case HighlightType.COLUMNS:
-                if (validationResult.highlightCol !== undefined) {
-                    this.highlightColumn(validationResult.highlightCol);
-                }
+                this.highlightColumn(validationResult.highlightCol);
                 break;
             case HighlightType.NONE:
             default:
