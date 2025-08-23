@@ -260,11 +260,11 @@ export class Game extends Scene
 
     private returnTileToOriginalPosition(tile: Tile): void {
         if (tile.tileData.isPlaced) {
-            // Tile was on the board, return it to its board position
+            // Tile was on the board, return it to its board position using local coordinates
             const pos = tile.tileData.boardPosition;
             if (pos) {
-                const worldPos = this.board.getCellWorldPosition(pos.row, pos.col);
-                tile.setPosition(worldPos.x, worldPos.y);
+                const localPos = this.board.getCellLocalPosition(pos.row, pos.col);
+                tile.setPosition(localPos.x, localPos.y);
             }
         } else {
             // Tile was in tray, return it to tray

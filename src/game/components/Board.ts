@@ -90,9 +90,12 @@ export class Board extends GameObjects.Container {
             boardPosition: { row, col } 
         });
 
-        // Position the tile visually
-        const worldPos = this.getCellWorldPosition(row, col);
-        tile.setPosition(worldPos.x, worldPos.y);
+        // Position the tile visually using local coordinates
+        const localPos = this.getCellLocalPosition(row, col);
+        tile.setPosition(localPos.x, localPos.y);
+        
+        // Add tile to board container so it moves with the board
+        this.add(tile);
         
         // Store reference to tile
         const coordKey = createCoordinateKey(row, col);
@@ -122,6 +125,10 @@ export class Board extends GameObjects.Container {
                 isPlaced: false, 
                 boardPosition: undefined 
             });
+            
+            // Remove tile from board container
+            this.remove(tile);
+            
             this.placedTiles.delete(coordKey);
             return tile;
         }
@@ -157,6 +164,17 @@ export class Board extends GameObjects.Container {
         return {
             x: this.x + startX + (col * this.CELL_SIZE),
             y: this.y + startY + (row * this.CELL_SIZE)
+        };
+    }
+
+    public getCellLocalPosition(row: number, col: number): { x: number; y: number } {
+        const actualGridSize = this.CELL_SIZE * this.GRID_SIZE;
+        const startX = -(actualGridSize / 2) + (this.CELL_SIZE / 2);
+        const startY = -(actualGridSize / 2) + (this.CELL_SIZE / 2);
+        
+        return {
+            x: startX + (col * this.CELL_SIZE),
+            y: startY + (row * this.CELL_SIZE)
         };
     }
 
